@@ -134,11 +134,14 @@ class MujocoEnv(gym.Env):
         return self.model.data.xmat[idx].reshape((3, 3))
 
 
-    def get_sensor_sensordata(self, body_name):
+    def get_sensor_sensordata(self):
         #idx = self.model.nsensordata#((body_name))
         return self.data.sensordata
-    #
-    # def get_sensor_sensordata(self, body_name):
+
+    def give_control_actuators(self): #used to print the actuator NOT USEFUL
+        return self.model.data.cntrl
+
+    #def get_sensor_sensordata(self, body_name):
     #     idx = self.model.site.index(six.b(body_name))
     #     return self.model.sensor.sensordata[idx].reshape((1, 3))
 
