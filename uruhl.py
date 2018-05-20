@@ -11,27 +11,25 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     def _step(self, a):
         # Carry out one step
         # Don't forget to do self.do_simulation(a, self.frame_skip)
-        xposbefore = self.get_body_com("mainframe")[0]
         self.do_simulation(a, self.frame_skip)
-        xposafter = self.get_body_com("mainframe")[0]
-        ctrl_cost = .5 * np.square(a).sum()
-        contact_cost = 0.5 * 1e-3 * np.sum(
-            np.square(np.clip(self.model.data.cfrc_ext, -1, 1)))
-
-
-        state = self.state_vector()
-        notdone = np.isfinite(state).all() \
-            and state[2] >= 0.2 and state[2] <= 1.0
-
-        done = not notdone
+        #state = self.state_vector()
+        #notdone = np.isfinite(state).all() \
+        #    and state[2] >= 0.2 and state[2] <= 1.0
+        #done = not notdone
+        done = False
         ob = self._get_obs()
     #   angle = _get_angle(ob)
-    #   if (angle>70 or angle<-70):             #Radian or DEgree???
+    #   if (angle>70 or angle<-70):             #Radian or Degree???
     #       done = True
         reward = self._get_reward(done)
         return ob, reward, done,1
+
 #    def _get_angle(self,ob):
 #        ax,ay,az,gx,gy,gx,_,_ = ob #I donno whether they are in the correct cordinate system
+
+
+    #def _take_action(self, action):
+        #pass
     def _get_reward(self,done):
         if done == True:
             return -5
@@ -41,15 +39,9 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     def _get_obs(self):
         # Observation of environment feed to agent. This should never be called
         # directly but should be returned through reset_model and step
-        acc = self.get_sensor_sensordata("Acc")
-        print acc
-        return acc
-        # print acc
-        # return np.concatenate([
-        #     self.model.data.qpos.flat[2:],
-        #     self.model.data.qvel.flat,
-        #     np.clip(self.model.data.cfrc_ext, -1, 1).flat,
-        # ])
+        obse = self.get_sensor_sensordata()
+        #print obse
+        return obse
 
     def reset_model(self):
         # Reset model to original state.
