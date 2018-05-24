@@ -30,11 +30,11 @@ NUM_EPISODES_PLATEAU_LEARNING = 2000
 NUM_EPISODES_PLATEAU_DISCOUNT = 2000
 
 STREAK_TO_END = 120
-SOLVED_T = 199          # anything more than this returns Done = true for the openAI Gym
+SOLVED_T = 2000          # anything more than this returns Done = true for the openAI Gym
 
 NEG_REW = -50 #negative reward for fallen pole
 DISPLAY_RATES = True #To display the rates as a graph over time
-DISPLAY_ENV = False  #To display the render for enviroment
+DISPLAY_ENV = True  #To display the render for enviroment
 if DISPLAY_ENV ==True:
     from time import sleep
 
