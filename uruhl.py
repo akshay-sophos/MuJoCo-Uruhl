@@ -1,6 +1,8 @@
 import numpy as np
 from gym import utils
 from gym.envs.mujoco import mujoco_env
+import math
+#import tensorflow as tf
 #from gym.envs.mujoco import mujoco_py.MjSim
 
 class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
@@ -18,18 +20,24 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         #done = not notdone
         done = False
         ob = self._get_obs()
-    #   angle = _get_angle(ob)
-    #   if (angle>70 or angle<-70):             #Radian or Degree???
+        angle = self._get_angle()
+        #if (angle>70 or angle<-70):             #Radian or Degree???
     #       done = True
         reward = self._get_reward(done)
         return ob, reward, done,1
 
-#    def _get_angle(self,ob):
-#        ax,ay,az,gx,gy,gx,_,_ = ob #I donno whether they are in the correct cordinate system
+    def _get_angle(self):
+        qu = self.data.xquat[1]
+        #qu = self.data.xmat[1]
+        X,Y,Z = self.quaternion_to_euler_angle(qu[1],qu[2],qu[3],qu[0])
+        print [X,Y,Z]
+        return [X,Y,Z]
+        #print qu
+        #qu = qu.reshape(3,3)
+        #x = self.rotationMatrixToEulerAngles(qu)*(180/math.pi)
+        #print x
+        #return x
 
-
-    #def _take_action(self, action):
-        #pass
     def _get_reward(self,done):
         if done == True:
             return -5
@@ -41,20 +49,83 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         # directly but should be returned through reset_model and step
         obse = self.get_sensor_sensordata()
         #print obse
+        #print self.self_dat()
+        #print self.model.__dict__
+        #print self.get_body_com("mainframe")[0]
+        #print self.data.xquat[1]
+        #quaternion = self.data.xquat[1]
+        #euler = tf.transformations.euler_from_quaternion(quaternion)
+        #print euler
         return obse
 
     def reset_model(self):
         # Reset model to original state.
         # This is called in the overall env.reset method
         # do not call this method directly.
-        qpos = self.init_qpos + self.np_random.uniform(size=self.model.nq, low=-.1, high=.1)
-        qvel = self.init_qvel + self.np_random.randn(self.model.nv) * .1
+        qpos = self.init_qpos #+ self.np_random.uniform(size=self.model.nq, low=-.1, high=.1)
+        qvel = self.init_qvel #+ self.np_random.randn(self.model.nv) * .1
         #qvel = 0
         self.set_state(qpos, qvel)
         return self._get_obs()
 
     def viewer_setup(self):
         self.viewer.cam.distance = self.model.stat.extent * 0.8
+
+    def quaternion_to_euler_angle(self,w, y,x,z):
+        ysqr = y * y
+
+    	t0 = +2.0 * (w * x + y * z)
+    	t1 = +1.0 - 2.0 * (x * x + ysqr)
+    	X = math.degrees(math.atan2(t0, t1))
+
+    	t2 = +2.0 * (w * y - z * x)
+    	t2 = +1.0 if t2 > +1.0 else t2
+    	t2 = -1.0 if t2 < -1.0 else t2
+    	Y = math.degrees(math.asin(t2))
+
+    	t3 = +2.0 * (w * z + x * y)
+    	t4 = +1.0 - 2.0 * (ysqr + z * z)
+    	Z = math.degrees(math.atan2(t3, t4))
+
+    	return X, Y, Z
+
+    # Checks if a matrix is a valid rotation matrix.
+    def isRotationMatrix(self,R) :
+        Rt = np.transpose(R)
+        shouldBeIdentity = np.dot(Rt, R)
+        I = np.identity(3, dtype = R.dtype)
+        n = np.linalg.norm(I - shouldBeIdentity)
+        return n < 1e-6
+
+    # Calculates rotation matrix to euler angles
+    # The result is the same as MATLAB except the order
+    # of the euler angles ( x and z are swapped ).
+    def rotationMatrixToEulerAngles(self,R) :
+        assert(self.isRotationMatrix(R))
+
+        sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+
+        singular = sy < 1e-6
+
+        if  not singular :
+            x = math.atan2(R[2,1] , R[2,2])
+            y = math.atan2(-R[2,0], sy)
+            z = math.atan2(R[1,0], R[0,0])
+        else :
+            x = math.atan2(-R[1,2], R[1,1])
+            y = math.atan2(-R[2,0], sy)
+            z = 0
+
+        return np.array([x, y, z])
+
+
+
+
+
+
+
+
+
 
 """
     def __init__(self):
@@ -113,3 +184,32 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
             return self.somestate ** 2
         else:
             return 0"""
+"""
+///////////////////////////////
+ Quaternion to Euler
+///////////////////////////////
+enum RotSeq{zyx, zyz, zxy, zxz, yxz, yxy, yzx, yzy, xyz, xyx, xzy,xzx};
+
+def twoaxisrot(double r11, double r12, double r21, double r31, double r32, double res[]):
+    res[0] = atan2( r11, r12 )
+    res[1] = acos ( r21 )
+    res[2] = atan2( r31, r32 )
+
+def threeaxisrot(double r11, double r12, double r21, double r31, double r32, double res[]):
+    res[0] = atan2( r31, r32 )
+    res[1] = asin ( r21 )
+    res[2] = atan2( r11, r12 )
+
+def quaternion2Euler(const Quaternion& q, double res[], RotSeq rotSeq):
+    def switch(rotSeq):
+        switcher={
+        zyx: threeaxisrot( 2*(q.x*q.y + q.w*q.z),q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z,-2*(q.x*q.z - q.w*q.y),2*(q.y*q.z + q.w*q.x),q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z,res),
+        zyz: twoaxisrot( 2*(q.y*q.z - q.w*q.x),2*(q.x*q.z + q.w*q.y),q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z,2*(q.y*q.z + q.w*q.x),-2*(q.x*q.z - q.w*q.y),res),
+        zxy: threeaxisrot( -2*(q.x*q.y - q.w*q.z),q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z,2*(q.y*q.z + q.w*q.x),-2*(q.x*q.z - q.w*q.y),q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z,res),
+        zxz: twoaxisrot( 2*(q.x*q.z + q.w*q.y),-2*(q.y*q.z - q.w*q.x),q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z,2*(q.x*q.z - q.w*q.y),2*(q.y*q.z + q.w*q.x),res),
+        yxz: threeaxisrot( 2*(q.x*q.z + q.w*q.y),q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z,-2*(q.y*q.z - q.w*q.x),2*(q.x*q.y + q.w*q.z),q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z,res),
+        yzx: threeaxisrot( -2*(q.x*q.z - q.w*q.y),q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z,2*(q.x*q.y + q.w*q.z),-2*(q.y*q.z - q.w*q.x),q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z,res),
+        xyz: threeaxisrot( -2*(q.y*q.z - q.w*q.x),q.w*q.w - q.x*q.x - q.y*q.y + q.z*q.z,2*(q.x*q.z + q.w*q.y),-2*(q.x*q.y - q.w*q.z),q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z,res),
+        xzy: threeaxisrot( 2*(q.y*q.z + q.w*q.x),q.w*q.w - q.x*q.x + q.y*q.y - q.z*q.z,-2*(q.x*q.y - q.w*q.z),2*(q.x*q.z + q.w*q.y),q.w*q.w + q.x*q.x - q.y*q.y - q.z*q.z,res),
+            }
+    func = switcher.get(argument, lambda: "Invalid month") """
