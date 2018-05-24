@@ -1,8 +1,8 @@
 import gym
 import time
 env = gym.make('Uruhl-v0')
-a = [35,-35]
-b = [-35,35]
+a = [-10,0]
+b = [-10,0]
 action = a
 for i_episode in range(1):
     observation = env.reset()
@@ -13,10 +13,17 @@ for i_episode in range(1):
                 action = b
             else:
                 action = a
-	#if 0:
-	 #   action = [10,-10]
+	if (0 and t <= 100):
+	    action = [-10,10]
+	if (0 and t>100 and t < 300):
+	    action = [130,-130]
+	if (0 and t==300 ):
+	    action = [-10,10]
+	    print "HHHHHHHHHHHHHHHHHHHHHHHHEEEEYYYY"
+	if (0 and t>300):
+	    action = [0,0]
         observation, reward, done, info = env.step(action)
-	time.sleep(0.5) 
+	time.sleep(0.05) 
 	#print(reward,done)
 	#print observation
         if done:
