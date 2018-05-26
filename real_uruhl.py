@@ -9,11 +9,11 @@ from matplotlib import cm
 
 #### Learning related constants ####
 MIN_EXPLORE_RATE = 0.01 #The min exploration rate; The max is 1
-PULL_UP_EXPLORE_LINE = 5 #Increase this to decrease the rate of decrease of epsilon
+PULL_UP_EXPLORE_LINE = 3 #Increase this to decrease the rate of decrease of epsilon
 
-START_LEARNING_RATE = 1 #The max learning_rate
+START_LEARNING_RATE = 1 #The max learning_rate ITS FOR Q FUNCTION AND NOT GRADIENT DESCENT
 MIN_LEARNING_RATE = 0.01   #The min learning_rate
-PULL_UP_LEARN_RATE = 1
+PULL_UP_LEARN_RATE = 5
 
 START_DISCOUNT_FACTOR = 0 #The min discount_factor
 MAX_DISCOUNT_FACTOR = 0.99  #The max discount_factor
@@ -24,24 +24,25 @@ TF_LEARN_RATE = 0.01 #Learning Rate for Gradient Descent
 #### Defining the simulation related constants ####
 
 #Defines the number of episodes it should perform the increment/decrement of values
-NUM_EPISODES = 5000
-NUM_EPISODES_PLATEAU_EXPLORE = 3000
-NUM_EPISODES_PLATEAU_LEARNING = 2000
-NUM_EPISODES_PLATEAU_DISCOUNT = 2000
+NUM_EPISODES = 3000
+NUM_EPISODES_PLATEAU_EXPLORE =  3000*3/5
+NUM_EPISODES_PLATEAU_LEARNING = 2000*3/5
+NUM_EPISODES_PLATEAU_DISCOUNT = 2000*3/5
 
 STREAK_TO_END = 120
-SOLVED_T = 2000          # anything more than this returns Done = true for the openAI Gym
+SOLVED_T = 500          # anything more than this returns Done = true for the openAI Gym
 
 NEG_REW = -50 #negative reward for fallen pole
-DISPLAY_RATES = True #To display the rates as a graph over time
+DISPLAY_RATES = False #To display the rates as a graph over time
 DISPLAY_ENV = True  #To display the render for enviroment
 if DISPLAY_ENV ==True:
     from time import sleep
 
 # number of neurons in each layer
 input_num_units = 10
-hidden_num_units1 = 100
-hidden_num_units2 = 100
+hidden_num_units1 = 20
+hidden_num_units2 = 20
+hidden_num_units3 = 20
 output_num_units = 1
 
 #def pcom(s):
@@ -105,7 +106,8 @@ if 0:
 else:
     hidden_layer1 = tf.layers.dense(tf_x, hidden_num_units1, tf.nn.tanh)
     hidden_layer2 = tf.layers.dense(hidden_layer1, hidden_num_units2, tf.nn.relu)
-    output_layer = tf.layers.dense(hidden_layer2, output_num_units)
+    hidden_layer3 = tf.layers.dense(hidden_layer2, hidden_num_units3, tf.nn.relu)
+    output_layer = tf.layers.dense(hidden_layer3, output_num_units)
 
 cost = tf.losses.mean_squared_error(tf_exp_q, output_layer)
 optimizer = tf.train.AdamOptimizer(TF_LEARN_RATE)
@@ -126,7 +128,7 @@ with tf.Session() as sess:
         learning_rate = get_learning_rate(ep)
         discount_factor = get_discount_factor(ep)
         observation = env.reset()
-        if DISPLAY_ENV == True:
+        if DISPLAY_ENV == True and ep > NUM_EPISODES-200:
             env.render()
         tot_cost = 0
         tot_rew = 0
@@ -166,8 +168,8 @@ with tf.Session() as sess:
             # pcom(action)
             # print ("curQval ", curQval, " action ", action)
             nextMaxQval,_ = Q(observation, True)
-            if done == True and tot_rew<199:
-                reward = NEG_REW
+            # if done == True and tot_rew<199:
+            #     reward = NEG_REW
             exp_qVal = (1-learning_rate)* curQval  + learning_rate*( reward + discount_factor*nextMaxQval )
             action_array = np.asarray(action).reshape([1,2])
             exp_qVal_array = np.asarray(exp_qVal).reshape([1,1])
@@ -193,16 +195,16 @@ with tf.Session() as sess:
         print(ep, "T_Cost:%.4f" %c,  "T_Reward:%d" %tot_rew)
         ep = ep+1
 
-# To plot Reward and Cost w.r.t time
+    saver = tf.train.Saver()
+    saver.save(sess, './save/model.ckpt')
+    print("\n Training Over")
 
+# To plot Reward and Cost w.r.t time
     f, axarr = plt.subplots(2, sharex=True)
     axarr[0].plot(cost_plot)
     axarr[0].set_title('cost_plot')
     axarr[0].set_ylim([0, 1])
     axarr[1].plot(reward_plot)
     axarr[1].set_title('reward_plot')
-
-    plt.show()
-    saver = tf.train.Saver()
-    saver.save(sess, '~/Desktop/pics')
-    print("\n Training Over")
+    plt.savefig('./cost.png')
+    #plt.show()
