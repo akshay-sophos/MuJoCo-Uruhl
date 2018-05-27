@@ -24,16 +24,16 @@ TF_LEARN_RATE = 0.01 #Learning Rate for Gradient Descent
 #### Defining the simulation related constants ####
 
 #Defines the number of episodes it should perform the increment/decrement of values
-NUM_EPISODES = 5000
-NUM_EPISODES_PLATEAU_EXPLORE =  3000#*3/5
-NUM_EPISODES_PLATEAU_LEARNING = 2000#*3/5
-NUM_EPISODES_PLATEAU_DISCOUNT = 2000#*3/5
+NUM_EPISODES = 3000
+NUM_EPISODES_PLATEAU_EXPLORE =  3000*3/5
+NUM_EPISODES_PLATEAU_LEARNING = 2000*3/5
+NUM_EPISODES_PLATEAU_DISCOUNT = 2000*3/5
 
 STREAK_TO_END = 120
 SOLVED_T = 500          # anything more than this returns Done = true for the openAI Gym
 
 NEG_REW = -50 #negative reward for fallen pole
-DISPLAY_RATES = False #To display the rates as a graph over time
+DISPLAY_RATES = True#False #To display the rates as a graph over time
 DISPLAY_ENV = True  #To display the render for enviroment
 if DISPLAY_ENV ==True:
     from time import sleep
@@ -123,7 +123,6 @@ with tf.Session() as sess:
     # create initialized variables
     sess.run(tf.global_variables_initializer())
     ep = 0
-    #for ep in range(NUM_EPISODES):
     while ep<=NUM_EPISODES:
         explore_rate = get_explore_rate(ep)
         learning_rate = get_learning_rate(ep)
@@ -135,10 +134,11 @@ with tf.Session() as sess:
             env.render()
         tot_cost = 0
         tot_rew = 0
-        # Qlearning is off-policy.
-        # if max=True, return the (maxQ, bestAction)
-        # if max = False, return the (bestQ, correspondingAction) based on explore_rate
-#######################################################################################33
+
+#######################################################################################
+    # Qlearning is off-policy.
+    # if max=True, return the (maxQ, bestAction)
+    # if max = False, return the (bestQ, correspondingAction) based on explore_rate
         def Q(observation,max):
             #array returned, make scalar
             acto = np.arange(0,200)
@@ -155,7 +155,7 @@ with tf.Session() as sess:
             else:
                 if(random.random()<explore_rate): # EXPLORE high explore rate => more exploration
                     act = random.randrange(200)-100
-                    return(acto[act],[act,-act])
+                    return(acto[act+100],[act,-act])
                 else:                             # DONT EXPLORE
                     return (maxQ, maxA)
 
@@ -163,18 +163,12 @@ with tf.Session() as sess:
         for t in range(SOLVED_T):
             pobs = observation
             curQval,action = Q(pobs,False)
-            # reward is 1 for all steps except those that are called after a done=True is returned
-            # done is True when the pole has fell
             observa,reward,done,_ = env.step(action)
             np.copyto(observation,observa)
             np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
             if DISPLAY_ENV == True:
                 env.render()
-            # pcom(action)
-            # print ("curQval ", curQval, " action ", action)
             nextMaxQval,_ = Q(observation, True)
-            # if done == True and tot_rew<199:
-            #     reward = NEG_REW
             exp_qVal = (1-learning_rate)* curQval  + learning_rate*( reward + discount_factor*nextMaxQval )
             action_array = np.asarray(action).reshape([1,2])
             exp_qVal_array = np.asarray(exp_qVal).reshape([1,1])
@@ -185,10 +179,6 @@ with tf.Session() as sess:
             else:
                 I = np.vstack([I,inpu])
                 Z = np.vstack([Z,exp_qVal_array])
-            #_,c = sess.run([train_op,cost], {tf_x: np.append(pobs, action_array)[np.newaxis], tf_exp_q: exp_qVal_array})
-            #c1 = sess.run([cost], {tf_x: np.append(pobs, action_array)[np.newaxis], tf_exp_q: exp_qVal_array})
-            # print('c c1 ',c, ' ', c1)
-            #tot_cost += c
             tot_rew +=reward
             if done == True:
                 break
@@ -197,7 +187,7 @@ with tf.Session() as sess:
         if(ep%10 == 0):
             cost_plot = np.append(cost_plot,c)#tot_cost)
             reward_plot = np.append(reward_plot, tot_rew)
-        print(ep, "T_Cost:%.4f" %c,  "T_Reward:%d" %tot_rew)
+            print(ep, "T_Cost:%.4f" %c,  "T_Reward:%d" %tot_rew)
         ep = ep+1
 
     saver = tf.train.Saver()
