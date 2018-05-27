@@ -21,8 +21,8 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         done = False
         ob = self._get_obs()
         angle = self._get_angle()
-        #if (angle>70 or angle<-70):             #Radian or Degree???
-    #       done = True
+        if ((angle)>10):
+            done = True
         reward = self._get_reward(done)
         return ob, reward, done,1
 
@@ -30,8 +30,8 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         qu = self.data.xquat[1]
         #qu = self.data.xmat[1]
         X,Y,Z = self.quaternion_to_euler_angle(qu[1],qu[2],qu[3],qu[0])
-        print [X,Y,Z]
-        return [X,Y,Z]
+        #print X
+        return X
         #print qu
         #qu = qu.reshape(3,3)
         #x = self.rotationMatrixToEulerAngles(qu)*(180/math.pi)
@@ -42,7 +42,7 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         if done == True:
             return -5
         else:
-            return 5
+            return 1
 
     def _get_obs(self):
         # Observation of environment feed to agent. This should never be called
@@ -56,7 +56,8 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         #quaternion = self.data.xquat[1]
         #euler = tf.transformations.euler_from_quaternion(quaternion)
         #print euler
-        return obse
+        #ob[6] = (ob[6]/0.7)%180
+        return obse #ADD NOISE
 
     def reset_model(self):
         # Reset model to original state.
