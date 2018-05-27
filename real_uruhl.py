@@ -13,7 +13,7 @@ PULL_UP_EXPLORE_LINE = 3 #Increase this to decrease the rate of decrease of epsi
 
 START_LEARNING_RATE = 1 #The max learning_rate ITS FOR Q FUNCTION AND NOT GRADIENT DESCENT
 MIN_LEARNING_RATE = 0.01   #The min learning_rate
-PULL_UP_LEARN_RATE = 5
+PULL_UP_LEARN_RATE = 1
 
 START_DISCOUNT_FACTOR = 0 #The min discount_factor
 MAX_DISCOUNT_FACTOR = 0.99  #The max discount_factor
@@ -24,10 +24,10 @@ TF_LEARN_RATE = 0.01 #Learning Rate for Gradient Descent
 #### Defining the simulation related constants ####
 
 #Defines the number of episodes it should perform the increment/decrement of values
-NUM_EPISODES = 3000
-NUM_EPISODES_PLATEAU_EXPLORE =  3000*3/5
-NUM_EPISODES_PLATEAU_LEARNING = 2000*3/5
-NUM_EPISODES_PLATEAU_DISCOUNT = 2000*3/5
+NUM_EPISODES = 5000
+NUM_EPISODES_PLATEAU_EXPLORE =  3000#*3/5
+NUM_EPISODES_PLATEAU_LEARNING = 2000#*3/5
+NUM_EPISODES_PLATEAU_DISCOUNT = 2000#*3/5
 
 STREAK_TO_END = 120
 SOLVED_T = 500          # anything more than this returns Done = true for the openAI Gym
@@ -40,9 +40,9 @@ if DISPLAY_ENV ==True:
 
 # number of neurons in each layer
 input_num_units = 10
-hidden_num_units1 = 20
-hidden_num_units2 = 20
-hidden_num_units3 = 20
+hidden_num_units1 = 100
+hidden_num_units2 = 100
+hidden_num_units3 = 100
 output_num_units = 1
 
 #def pcom(s):
@@ -118,6 +118,7 @@ train_op = optimizer.minimize(cost)
 env = gym.make('Uruhl-v0')
 cost_plot = [0]
 reward_plot = [0]
+observation = np.ndarray(shape=(8,1))
 with tf.Session() as sess:
     # create initialized variables
     sess.run(tf.global_variables_initializer())
@@ -127,7 +128,9 @@ with tf.Session() as sess:
         explore_rate = get_explore_rate(ep)
         learning_rate = get_learning_rate(ep)
         discount_factor = get_discount_factor(ep)
-        observation = env.reset()
+        observa = env.reset()
+        np.copyto(observation,observa)
+        np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
         if DISPLAY_ENV == True and ep > NUM_EPISODES-200:
             env.render()
         tot_cost = 0
@@ -162,7 +165,9 @@ with tf.Session() as sess:
             curQval,action = Q(pobs,False)
             # reward is 1 for all steps except those that are called after a done=True is returned
             # done is True when the pole has fell
-            observation,reward,done,_ = env.step(action)
+            observa,reward,done,_ = env.step(action)
+            np.copyto(observation,observa)
+            np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
             if DISPLAY_ENV == True:
                 env.render()
             # pcom(action)
