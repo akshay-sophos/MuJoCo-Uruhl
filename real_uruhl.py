@@ -141,14 +141,14 @@ with tf.Session() as sess:
     # if max = False, return the (bestQ, correspondingAction) based on explore_rate
         def Q(observation,max):
             #array returned, make scalar
-            acto = np.arange(0,200)
+            acto = np.arange(0,200) #defining array for action ranging from -100 to 100 for the wheel
             for i in range(-100,100):
                 acto[i+100] = sess.run(output_layer,feed_dict={tf_x:(np.append(observation,[i,-i]))[np.newaxis]})[0][0]
-
-            maxA = np.argmax(acto)
-            maxQ = acto[maxA]
-            act = maxA -100
-            maxA = [act,-act]
+                #[i+100] as index has to be +ve . Action vector for  acto[i+100] is [i,-i]
+            maxA = np.argmax(acto) #Returns index of the max value element
+            maxQ = acto[maxA]      #Max Q value
+            act = maxA -100        #Converting index to action
+            maxA = [act,-act]      #Setting output action
 
             if (max ==True):
                 return (maxQ, maxA)
