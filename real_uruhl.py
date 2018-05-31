@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /usr/bin/python
 import gym
 import math
 import random
@@ -19,18 +19,18 @@ START_DISCOUNT_FACTOR = 0 #The min discount_factor
 MAX_DISCOUNT_FACTOR = 0.99  #The max discount_factor
 PULL_UP_DISC_FACTOR = 1
 
-TF_LEARN_RATE = 0.01 #Learning Rate for Gradient Descent
+TF_LEARN_RATE = 0.005 #Learning Rate for Gradient Descent
 
 #### Defining the simulation related constants ####
 
 #Defines the number of episodes it should perform the increment/decrement of values
-NUM_EPISODES = 3000
-NUM_EPISODES_PLATEAU_EXPLORE =  3000*3/5
-NUM_EPISODES_PLATEAU_LEARNING = 2000*3/5
-NUM_EPISODES_PLATEAU_DISCOUNT = 2000*3/5
+NUM_EPISODES = 300
+NUM_EPISODES_PLATEAU_EXPLORE =  3000*.2/5
+NUM_EPISODES_PLATEAU_LEARNING = 2000*.2/5
+NUM_EPISODES_PLATEAU_DISCOUNT = 2000*.2/5
 
 STREAK_TO_END = 120
-SOLVED_T = 500          # anything more than this returns Done = true for the openAI Gym
+SOLVED_T = 300          # anything more than this returns Done = true for the openAI Gym
 
 NEG_REW = -50 #negative reward for fallen pole
 DISPLAY_RATES = True#False #To display the rates as a graph over time
@@ -39,11 +39,12 @@ if DISPLAY_ENV ==True:
     from time import sleep
 
 # number of neurons in each layer
-input_num_units = 10
-hidden_num_units1 = 100
-hidden_num_units2 = 100
-hidden_num_units3 = 100
+input_num_units = 3
+hidden_num_units1 = 20
+hidden_num_units2 = 20
+hidden_num_units3 = 20
 output_num_units = 1
+seed = 10
 
 #def pcom(s):
     #print(s, end='', flush=True)
@@ -88,7 +89,7 @@ tf_x = tf.placeholder(tf.float32, [None, input_num_units],name="Input")
 # tf_qval = tf.placeholder(tf.float32,[1,1],name="Q_value")
 tf_exp_q =  tf.placeholder(tf.float32,[None,1],name="Expected_Q_value")
 
-if 0:
+if 1:
     weights = {
     'hidden1': tf.Variable(tf.random_normal([input_num_units, hidden_num_units1], seed=seed)),
     'hidden2': tf.Variable(tf.random_normal([hidden_num_units1, hidden_num_units2], seed=seed)),
@@ -100,9 +101,12 @@ if 0:
         'hidden2': tf.Variable(tf.random_normal([hidden_num_units2], seed=seed)),
         'output': tf.Variable(tf.random_normal([output_num_units], seed=seed))
     }
-    hidden_layer1 = tf.layers.dense(tf_x, hidden_num_units1, tf.nn.tanh)
-    hidden_layer2 = tf.layers.dense(hidden_layer1, hidden_num_units2, tf.nn.relu)
-    output_layer = tf.layers.dense(hidden_layer2, output_num_units)
+    hidden_layer1 = tf.add(tf.matmul(tf_x, weights['hidden1']), biases['hidden1'])
+    hidden_layer1 = tf.nn.tanh(hidden_layer1)
+    hidden_layer2 = tf.add(tf.matmul(hidden_layer1, weights['hidden2']), biases['hidden2'])
+    hidden_layer2 = tf.nn.leaky_relu(hidden_layer2,alpha=0.2)
+    output_layer = tf.matmul(hidden_layer2, weights['output']) + biases['output']
+
 else:
     hidden_layer1 = tf.layers.dense(tf_x, hidden_num_units1, tf.nn.tanh)
     hidden_layer2 = tf.layers.dense(hidden_layer1, hidden_num_units2, tf.nn.relu)
@@ -127,11 +131,11 @@ with tf.Session() as sess:
         explore_rate = get_explore_rate(ep)
         learning_rate = get_learning_rate(ep)
         discount_factor = get_discount_factor(ep)
-        observa = env.reset()
-        np.copyto(observation,observa)
-        np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
-        if DISPLAY_ENV == True and ep > NUM_EPISODES-200:
-            env.render()
+        observation = env.reset()
+        #np.copyto(observation,observa)
+        #np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
+        #if (DISPLAY_ENV == True and ep > (NUM_EPISODES-200)):
+        #    env.render()
         tot_cost = 0
         tot_rew = 0
 
@@ -141,21 +145,23 @@ with tf.Session() as sess:
     # if max = False, return the (bestQ, correspondingAction) based on explore_rate
         def Q(observation,max):
             #array returned, make scalar
-            acto = np.arange(0,200) #defining array for action ranging from -100 to 100 for the wheel
-            for i in range(-100,100):
-                acto[i+100] = sess.run(output_layer,feed_dict={tf_x:(np.append(observation,[i,-i]))[np.newaxis]})[0][0]
-                #[i+100] as index has to be +ve . Action vector for  acto[i+100] is [i,-i]
-            maxA = np.argmax(acto) #Returns index of the max value element
-            maxQ = acto[maxA]      #Max Q value
-            act = maxA -100        #Converting index to action
-            maxA = [act,-act]      #Setting output action
+            acto = np.arange(0,20)
+            for i in range(-10,10):
+                acto[i+10] = sess.run(output_layer,feed_dict={tf_x:(np.append(observation,[i*5,-i*5]))[np.newaxis]})[0][0]
+                # if(ep >100):
+                #     print i," ",acto[i+10]
+                #     time.sleep(1)
+            act = np.argmax(acto)
+            maxQ = acto[act]
+            act = act -10
+            maxA = [act*5,-act*5]
 
             if (max ==True):
                 return (maxQ, maxA)
             else:
                 if(random.random()<explore_rate): # EXPLORE high explore rate => more exploration
-                    act = random.randrange(200)-100
-                    return(acto[act+100],[act,-act])
+                    act = random.randrange(20)-10
+                    return(acto[act+10],[act*5,-act*5])
                 else:                             # DONT EXPLORE
                     return (maxQ, maxA)
 
@@ -163,12 +169,16 @@ with tf.Session() as sess:
         for t in range(SOLVED_T):
             pobs = observation
             curQval,action = Q(pobs,False)
-            observa,reward,done,_ = env.step(action)
-            np.copyto(observation,observa)
-            np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
-            if DISPLAY_ENV == True:
+            observation,reward,done,_ = env.step(action)
+            #np.copyto(observation,observa)
+            #np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
+            if (DISPLAY_ENV == True):# and ep > (NUM_EPISODES-200)):
                 env.render()
             nextMaxQval,_ = Q(observation, True)
+            if done == True and tot_rew<SOLVED_T:
+                reward = NEG_REW
+            else:
+                reward = 1
             exp_qVal = (1-learning_rate)* curQval  + learning_rate*( reward + discount_factor*nextMaxQval )
             action_array = np.asarray(action).reshape([1,2])
             exp_qVal_array = np.asarray(exp_qVal).reshape([1,1])
@@ -184,7 +194,7 @@ with tf.Session() as sess:
                 break
         _,c = sess.run([train_op,cost], {tf_x: I, tf_exp_q: Z})
 
-        if(ep%10 == 0):
+        if(ep%1 == 0):
             cost_plot = np.append(cost_plot,c)#tot_cost)
             reward_plot = np.append(reward_plot, tot_rew)
             print(ep, "T_Cost:%.4f" %c,  "T_Reward:%d" %tot_rew)
