@@ -11,23 +11,25 @@ from matplotlib import cm
 MIN_EXPLORE_RATE = 0.01 #The min exploration rate; The max is 1
 PULL_UP_EXPLORE_LINE = 3 #Increase this to decrease the rate of decrease of epsilon
 
-START_LEARNING_RATE = 1 #The max learning_rate ITS FOR Q FUNCTION AND NOT GRADIENT DESCENT
+START_LEARNING_RATE = 1 #The max learning_rate ITS FOR Q FUNCTION AND NOT GRADIENT DESCENT...
 MIN_LEARNING_RATE = 0.01   #The min learning_rate
-PULL_UP_LEARN_RATE = 1
+PULL_UP_LEARN_RATE = 3
 
 START_DISCOUNT_FACTOR = 0 #The min discount_factor
 MAX_DISCOUNT_FACTOR = 0.99  #The max discount_factor
-PULL_UP_DISC_FACTOR = 1
+PULL_UP_DISC_FACTOR = 3
+
+#    exp_qVal = (1-learning_rate)* curQval  + learning_rate*( reward + discount_factor*nextMaxQval )
 
 TF_LEARN_RATE = 0.005 #Learning Rate for Gradient Descent
 
 #### Defining the simulation related constants ####
 
 #Defines the number of episodes it should perform the increment/decrement of values
-NUM_EPISODES = 300
-NUM_EPISODES_PLATEAU_EXPLORE =  3000*.2/5
-NUM_EPISODES_PLATEAU_LEARNING = 2000*.2/5
-NUM_EPISODES_PLATEAU_DISCOUNT = 2000*.2/5
+NUM_EPISODES = 2000
+NUM_EPISODES_PLATEAU_EXPLORE =  3000*2/5
+NUM_EPISODES_PLATEAU_LEARNING = 2000*2/5
+NUM_EPISODES_PLATEAU_DISCOUNT = 2000*2/5
 
 STREAK_TO_END = 120
 SOLVED_T = 300          # anything more than this returns Done = true for the openAI Gym
@@ -172,7 +174,7 @@ with tf.Session() as sess:
             observation,reward,done,_ = env.step(action)
             #np.copyto(observation,observa)
             #np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
-            if (DISPLAY_ENV == True):# and ep > (NUM_EPISODES-200)):
+            if (DISPLAY_ENV == True and ep > (NUM_EPISODES-200)):
                 env.render()
             nextMaxQval,_ = Q(observation, True)
             if done == True and tot_rew<SOLVED_T:
@@ -194,7 +196,7 @@ with tf.Session() as sess:
                 break
         _,c = sess.run([train_op,cost], {tf_x: I, tf_exp_q: Z})
 
-        if(ep%1 == 0):
+        if(ep%10 == 0):
             cost_plot = np.append(cost_plot,c)#tot_cost)
             reward_plot = np.append(reward_plot, tot_rew)
             print(ep, "T_Cost:%.4f" %c,  "T_Reward:%d" %tot_rew)
