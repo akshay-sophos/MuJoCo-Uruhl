@@ -15,7 +15,7 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         done = False
         ob = self._get_obs()
         angle = self._get_angle()
-        if ((angle)>30):
+        if (abs(angle)>70):
             done = True
         reward = self._get_reward(done)
         return ob, reward, done,1
