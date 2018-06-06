@@ -9,15 +9,15 @@ from matplotlib import cm
 
 #### Learning related constants ####
 MIN_EXPLORE_RATE = 0.01 #The min exploration rate; The max is 1
-PULL_UP_EXPLORE_LINE = 3 #Increase this to decrease the rate of decrease of epsilon
+PULL_UP_EXPLORE_LINE = 6 #Increase this to decrease the rate of decrease of epsilon
 
 START_LEARNING_RATE = 1 #The max learning_rate ITS FOR Q FUNCTION AND NOT GRADIENT DESCENT...
 MIN_LEARNING_RATE = 0.01   #The min learning_rate
-PULL_UP_LEARN_RATE = 3
+PULL_UP_LEARN_RATE = 6
 
 START_DISCOUNT_FACTOR = 0 #The min discount_factor
 MAX_DISCOUNT_FACTOR = 0.99  #The max discount_factor
-PULL_UP_DISC_FACTOR = 3
+PULL_UP_DISC_FACTOR = 6
 
 #    exp_qVal = (1-learning_rate)* curQval  + learning_rate*( reward + discount_factor*nextMaxQval )
 
@@ -42,8 +42,8 @@ if DISPLAY_ENV ==True:
 
 # number of neurons in each layer
 input_num_units = 8
-hidden_num_units1 = 30
-hidden_num_units2 = 30
+hidden_num_units1 = 28
+hidden_num_units2 = 28
 hidden_num_units3 = 30
 output_num_units = 1
 seedo = 0
@@ -123,6 +123,10 @@ reward_plot = []
 observation = np.ndarray(shape=(IMU_sensor_count+0,1))
 MOV_WIN = [0]
 vall = 0
+rew = 0
+t = 0
+angle = 0
+IM_INTERVAL = 100
 ###############################################################################
 with tf.Session() as sess:
     # create initialized variables
@@ -130,6 +134,7 @@ with tf.Session() as sess:
     ep = 0
     observa = env.reset()
     observation = observa[0:IMU_sensor_count]
+    #########################################
     while ep<=NUM_EPISODES:
         explore_rate = get_explore_rate(ep)
         learning_rate = get_learning_rate(ep)
@@ -157,13 +162,17 @@ with tf.Session() as sess:
             maxQ = acto[act]
             act = act-act_num
             maxA = [act*action_scaling,-act*action_scaling]
-            # if t>2:
-            #     plt.rcdefaults()
-            #     plt.bar(acto,np.arange(-5,5),align='center',alpha=0.5)
-            #     plt.yticks(acto, np.arange(-5,5))
-            #     plt.xlabel('Action')
-            #     plt.title('Q value for action')
-            #     plt.show()
+            if t==80 and ep%IM_INTERVAL == 0:
+                plt.rcdefaults()
+                plt.bar(np.arange(-act_num,act_num+1,1),np.concatenate( acto, axis=0 ))#,align='center',alpha=1)
+                #plt.yticks(acto, np.arange(-5,5))
+                plt.xlabel('Action')
+                x = 'Q value for Angle = '+str(angle)
+                plt.title(x)
+                x = 'fig'+str(int(ep/IM-INTERVAL))+'.png'
+                plt.savefig('./bargraph/'+x)
+                plt.clf()
+
 
             if (max ==True):
                 return (maxQ, maxA)
@@ -179,7 +188,7 @@ with tf.Session() as sess:
         for t in range(SOLVED_T): #Window
             pobs = observation
             curQval,action = Q(pobs,False)
-            observa,reward,done,_ = env.step(action)
+            observa,reward,done,angle = env.step(action)
             observation = observa[0:IMU_sensor_count]
             # np.copyto(observation,observa)
             # np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
@@ -212,14 +221,17 @@ with tf.Session() as sess:
             #     I = np.vstack([I,inpu])
             #     Z = np.vstack([Z,exp_qVal_array])
             tot_rew +=reward
+            rew += reward
             if done == True:
+                print("Reward: %.5f"%rew)
+                rew = 0
                 observa = env.reset()
                 observation = observa[0:IMU_sensor_count]
         _,c = sess.run([train_op,cost], {tf_x: I, tf_exp_q: Z})
         if(ep%1 == 0):
             cost_plot = np.append(cost_plot,c)#tot_cost)
             reward_plot = np.append(reward_plot, tot_rew)
-            print(ep, "T_Cost:%.4f" %c,  "T_Reward:%d" %tot_rew)
+            print(ep, "T_Cost:%.4f" %c)#,  "T_Reward:%d" %tot_rew)
         ep = ep+1
 
 ##############################################################################
