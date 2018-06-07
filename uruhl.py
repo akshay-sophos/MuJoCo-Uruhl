@@ -15,10 +15,10 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         done = False
         ob = self._get_obs()
         angle = self._get_angle()
-        if (abs(angle)>70):
+        if (abs(angle)>60):
             done = True
-        reward = self._get_reward(done)
-        return ob, reward, done,1
+        reward = self._get_reward(angle,done)
+        return ob, reward, done,self.get_sensor_sensordata()[4]
 
     def _get_angle(self):
         qu = self.data.xquat[1]
@@ -32,11 +32,15 @@ class UruhlEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         #print x
         #return x
 
-    def _get_reward(self,done):
+    def _get_reward(self,angle,done):
         if done == True:
             return -1
+        elif abs(angle)<20:
+            return 4
         else:
             return 1
+
+
 
     def _get_obs(self):
         # Observation of environment feed to agent. This should never be called
