@@ -6,18 +6,18 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 from matplotlib import cm
-
+###############################################################################
 #### Learning related constants ####
 MIN_EXPLORE_RATE = 0.01 #The min exploration rate; The max is 1
-PULL_UP_EXPLORE_LINE = 6 #Increase this to decrease the rate of decrease of epsilon
+PULL_UP_EXPLORE_LINE = 16 #Increase this to decrease the rate of decrease of epsilon
 
 START_LEARNING_RATE = 1 #The max learning_rate ITS FOR Q FUNCTION AND NOT GRADIENT DESCENT...
 MIN_LEARNING_RATE = 0.01   #The min learning_rate
-PULL_UP_LEARN_RATE = 6
+PULL_UP_LEARN_RATE = 16
 
 START_DISCOUNT_FACTOR = 0 #The min discount_factor
 MAX_DISCOUNT_FACTOR = 0.99  #The max discount_factor
-PULL_UP_DISC_FACTOR = 6
+PULL_UP_DISC_FACTOR = 16
 
 #    exp_qVal = (1-learning_rate)* curQval  + learning_rate*( reward + discount_factor*nextMaxQval )
 
@@ -26,27 +26,27 @@ TF_LEARN_RATE = 0.005 #Learning Rate for Gradient Descent
 #### Defining the simulation related constants ####
 
 #Defines the number of episodes it should perform the increment/decrement of values
-NUM_EPISODES = 2000
+NUM_EPISODES = 3000
 NUM_EPISODES_PLATEAU_EXPLORE =  3000*NUM_EPISODES/5000
 NUM_EPISODES_PLATEAU_LEARNING = 2000*NUM_EPISODES/5000
 NUM_EPISODES_PLATEAU_DISCOUNT = 2000*NUM_EPISODES/5000
 
 STREAK_TO_END = 120
-SOLVED_T = 400          # anything more than this returns Done = true for the openAI Gym
-IMU_sensor_count = 6
-NEG_REW = -50 #negative reward for fallen pole
-DISPLAY_RATES = True#False #To display the rates as a graph over time
-DISPLAY_ENV = True  #To display the render for enviroment
-if DISPLAY_ENV ==True:
-    from time import sleep
-
+SOLVED_T = 200          # anything more than this returns Done = true for the openAI Gym
+#IMU_sensor_count = 6
+#NEG_REW = -5 #negative reward for fallen pole
+DISPLAY_RATES =False #To display the rates as a graph over time
+DISPLAY_ENV = True #To display the render for enviroment
+# if DISPLAY_ENV ==True:
+#     from time import sleep
+###############################################################################
 # number of neurons in each layer
-input_num_units = 8
-hidden_num_units1 = 28
-hidden_num_units2 = 28
-hidden_num_units3 = 30
+input_num_units = 3
+hidden_num_units1 = 15#8
+hidden_num_units2 = 15#8
+hidden_num_units3 = 10#8
 output_num_units = 1
-seedo = 0
+
 ################################################################################
 def get_explore_rate(t):
     maxValReached = math.log10(NUM_EPISODES_PLATEAU_EXPLORE)
@@ -84,64 +84,37 @@ if DISPLAY_RATES:
 ##############################################################################
 # define placeholders
 tf_x = tf.placeholder(tf.float32, [None, input_num_units],name="Input")
-#y = tf.placeholder(tf.float32, [1, output_num_units],name="Output")
-# tf_qval = tf.placeholder(tf.float32,[1,1],name="Q_value")
 tf_exp_q =  tf.placeholder(tf.float32,[None,1],name="Expected_Q_value")
-
-if 1:
-    weights = {
-    'hidden1': tf.Variable(tf.random_normal([input_num_units, hidden_num_units1], seed=seedo)),
-    'hidden2': tf.Variable(tf.random_normal([hidden_num_units1, hidden_num_units2], seed=5*seedo)),
-    'output': tf.Variable(tf.random_normal([hidden_num_units2, output_num_units], seed=3*seedo))
-    }
-
-    biases = {
-        'hidden1': tf.Variable(tf.random_normal([hidden_num_units1], seed=2*seedo)),
-        'hidden2': tf.Variable(tf.random_normal([hidden_num_units2], seed=seedo)),
-        'output': tf.Variable(tf.random_normal([output_num_units], seed=6*seedo))
-    }
-    hidden_layer1 = tf.add(tf.matmul(tf_x, weights['hidden1']), biases['hidden1'])
-    hidden_layer1 = tf.nn.tanh(hidden_layer1)
-    hidden_layer2 = tf.add(tf.matmul(hidden_layer1, weights['hidden2']), biases['hidden2'])
-    hidden_layer2 = tf.nn.leaky_relu(hidden_layer2,alpha=0.2)
-    output_layer = tf.matmul(hidden_layer2, weights['output']) + biases['output']
-
-else:
-    hidden_layer1 = tf.layers.dense(tf_x, hidden_num_units1, tf.nn.tanh)
-    hidden_layer2 = tf.layers.dense(hidden_layer1, hidden_num_units2, tf.nn.relu)
-    hidden_layer3 = tf.layers.dense(hidden_layer2, hidden_num_units3, tf.nn.relu)
-    output_layer = tf.layers.dense(hidden_layer3, output_num_units)
-
+hidden_layer1 = tf.layers.dense(tf_x, hidden_num_units1, tf.nn.tanh)
+hidden_layer2 = tf.layers.dense(hidden_layer1, hidden_num_units2, tf.nn.relu)
+hidden_layer3 = tf.layers.dense(hidden_layer2, hidden_num_units3, tf.nn.relu)
+output_layer = tf.layers.dense(hidden_layer3, output_num_units)
 cost = tf.losses.mean_squared_error(tf_exp_q, output_layer)
 optimizer = tf.train.AdamOptimizer()
 train_op = optimizer.minimize(cost)
-
 ###############################################################################
 env = gym.make('Uruhl-v0')
 cost_plot = []
 reward_plot = []
-observation = np.ndarray(shape=(IMU_sensor_count+0,1))
 MOV_WIN = [0]
 vall = 0
 rew = 0
 t = 0
 angle = 0
 IM_INTERVAL = 100
+MAX_STACK = 2000
+WINDOW_SIZE = 100
+start = 0
 ###############################################################################
 with tf.Session() as sess:
-    # create initialized variables
     sess.run(tf.global_variables_initializer())
     ep = 0
-    observa = env.reset()
-    observation = observa[0:IMU_sensor_count]
+    observation = env.reset()
     #########################################
     while ep<=NUM_EPISODES:
         explore_rate = get_explore_rate(ep)
         learning_rate = get_learning_rate(ep)
         discount_factor = get_discount_factor(ep)
-        # observa = env.reset()
-        # np.copyto(observation,observa)
-        # np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
         tot_cost = 0
         tot_rew = 0
 
@@ -150,9 +123,8 @@ with tf.Session() as sess:
     # if max=True, return the (maxQ, bestAction)
     # if max = False, return the (bestQ, correspondingAction) based on explore_rate
         def Q(observation,max):
-            #array returned, make scalar
-            action_scaling = 1
-            act_num = 25
+            action_scaling = 5
+            act_num = 10
             acto = np.zeros(2*act_num+1)
             V = np.append(observation,[-act_num*action_scaling,act_num*action_scaling])[np.newaxis]
             for i in range((-act_num)+1,act_num+1):
@@ -162,18 +134,17 @@ with tf.Session() as sess:
             maxQ = acto[act]
             act = act-act_num
             maxA = [act*action_scaling,-act*action_scaling]
-            if t==80 and ep%IM_INTERVAL == 0:
+            #Plotting Bargraph
+            if t==10 and ep%IM_INTERVAL == 0:
                 plt.rcdefaults()
                 plt.bar(np.arange(-act_num,act_num+1,1),np.concatenate( acto, axis=0 ))#,align='center',alpha=1)
                 #plt.yticks(acto, np.arange(-5,5))
                 plt.xlabel('Action')
-                x = 'Q value for Angle = '+str(angle)
+                x = 'Q value for Angle = '+str(observation)+ 'with Angular Velocity ='+str(av)
                 plt.title(x)
-                x = 'fig'+str(int(ep/IM-INTERVAL))+'.png'
-                plt.savefig('./bargraph/'+x)
+                x = 'fig'+str(int(ep/IM_INTERVAL))+'.png'
+                plt.savefig('./bargraph_angle/'+x)
                 plt.clf()
-
-
             if (max ==True):
                 return (maxQ, maxA)
             else:
@@ -188,50 +159,43 @@ with tf.Session() as sess:
         for t in range(SOLVED_T): #Window
             pobs = observation
             curQval,action = Q(pobs,False)
-            observa,reward,done,angle = env.step(action)
-            observation = observa[0:IMU_sensor_count]
-            # np.copyto(observation,observa)
-            # np.put(observation,[6,7],[((observa[6])*(180/math.pi))%180,((observa[7])*(180/math.pi))%180])
-            if (DISPLAY_ENV == True):# and ep > (NUM_EPISODES-2000):
+            observation,reward,done,av = env.step(action)
+            if (DISPLAY_ENV == True):# and ep > (NUM_EPISODES-500):
                 env.render()
             nextMaxQval,_ = Q(observation, True)
-            if done == True :#and tot_rew<10000:
-                reward = NEG_REW
-                MOV_WIN = np.append(MOV_WIN,vall)
-                vall = 0
-            else:
-                #reward = 1
-                vall += 1
             exp_qVal = (1-learning_rate)* curQval  + learning_rate*( reward + discount_factor*nextMaxQval )
             action_array = np.asarray(action).reshape([1,2])
-            # exp_qVal_array = np.asarray(exp_qVal).reshape([1,1])
-            # inpu = np.append(pobs,action_array)[np.newaxis]
-            if ep == 0 and t==0:
+            if start==0:
                 I = np.append(pobs,action_array)[np.newaxis]
                 Z = np.asarray(exp_qVal).reshape([1,1])
-                MOV_WIN = np.delete(MOV_WIN,0)
-            I = np.vstack([I,np.append(pobs,action_array)[np.newaxis]])
-            Z = np.vstack([Z,np.asarray(exp_qVal).reshape([1,1])])
-            if t==0 and ep>0:
-                #print MOV_WIN,"HI"
-                I = np.delete(I,np.s_[0:int(MOV_WIN[0])],axis=0)
-                Z = np.delete(Z,np.s_[0:int(MOV_WIN[0])],axis=0)
-                MOV_WIN = np.delete(MOV_WIN,0)
-            # else:
-            #     I = np.vstack([I,inpu])
-            #     Z = np.vstack([Z,exp_qVal_array])
+            else:
+                I = np.vstack([I,np.append(pobs,action_array)[np.newaxis]])
+                Z = np.vstack([Z,np.asarray(exp_qVal).reshape([1,1])])
+            start = 1
+            if len(I)>MAX_STACK:
+                I = np.delete(I,0,axis=0)#np.s_[0:int(MOV_WIN[0])],axis=0)
+                Z = np.delete(Z,0,axis=0)#np.s_[0:int(MOV_WIN[0])],axis=0)
+            if len(I)>WINDOW_SIZE and len(I)<=MAX_STACK:
+                I_train = I[len(I)-1]
+                Z_train = Z[len(Z)-1]
+                samp = random.sample(range(0,len(I)),WINDOW_SIZE-1)
+                for x in samp:
+                    I_train = np.vstack([I_train,I[x]])
+                    Z_train = np.vstack([Z_train,Z[x]])
+                _,c = sess.run([train_op,cost], {tf_x: I_train, tf_exp_q: Z_train})
+            # elif len(I)<=WINDOW_SIZE:
+            #     print I
+            #     _,c = sess.run([train_op,cost], {tf_x: I, tf_exp_q: Z})
+
             tot_rew +=reward
             rew += reward
             if done == True:
                 print("Reward: %.5f"%rew)
+                reward_plot = np.append(reward_plot,rew)
                 rew = 0
-                observa = env.reset()
-                observation = observa[0:IMU_sensor_count]
-        _,c = sess.run([train_op,cost], {tf_x: I, tf_exp_q: Z})
-        if(ep%1 == 0):
-            cost_plot = np.append(cost_plot,c)#tot_cost)
-            reward_plot = np.append(reward_plot, tot_rew)
-            print(ep, "T_Cost:%.4f" %c)#,  "T_Reward:%d" %tot_rew)
+                observation = env.reset()
+        cost_plot = np.append(cost_plot,c)#tot_cost)
+        print(ep, "T_Cost:%.4f" %c)#,  "T_Reward:%d" %tot_rew)
         ep = ep+1
 
 ##############################################################################
@@ -246,7 +210,7 @@ with tf.Session() as sess:
     #axarr[0].set_ylim([0, 1])
     axarr[1].plot(reward_plot)
     axarr[1].set_title('reward_plot')
-    plt.savefig('./cost.png')
+    plt.savefig('./bargraph_angle/cost.png')
     #plt.show()
                     ###############################
                     ###############################
